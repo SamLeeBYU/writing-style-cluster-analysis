@@ -122,7 +122,7 @@ kmeans.summary <- function(X, iters = 500, seed = 666) {
   print(kmeans_stab_summary)
 }
 
-kmeans.summary(X = X.pca[, 1:13], iters = 500)
+#kmeans.summary(X = X.pca[, 1:13], iters = 500)
 
 # k       CH
 # 1 3 187.6944
@@ -136,3 +136,15 @@ kmeans.summary(X = X.pca[, 1:13], iters = 500)
 # k5 5  0.6472300     0.004920278
 # k6 6  0.6775243     0.005006445
 # k7 7  0.6394362     0.004726481
+
+get.data <- function(X, k, seed) {
+  as.data.frame(cbind(
+    X,
+    "label" = kmeans_clusters(X, k, Bstart = 10, seed = seed)
+  ))
+}
+
+for (k in k.grid) {
+  dat.k <- get.data(X.pca[, 1:13], k, seed = 666)
+  readr::write_csv(dat.k, stringr::str_c("Data/dat-", k, ".csv"))
+}
