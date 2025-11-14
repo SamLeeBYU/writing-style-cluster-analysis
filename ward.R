@@ -90,20 +90,33 @@ ward_jaccard_boot <- function(X, k, R = 200, seed = NULL) {
 }
 
 k.grid <- 3:7
-X8 <- X.pca[, 1:8]
 
-ward_ch_summary <- ward_ch(X8, k.grid)
+ward.summary <- function(X, iters = 500, seed = 666) {
+  ward_ch_summary <- ward_ch(X, k.grid)
+  print(ward_ch_summary)
+  ward_stab <- lapply(k.grid, function(k) {
+    ward_jaccard_boot(X, k = k, R = iters, seed = seed)
+  })
+  names(ward_stab) <- paste0("k", k.grid)
 
-ward_stab <- lapply(k.grid, function(k) {
-  ward_jaccard_boot(X8, k = k, R = 500, seed = 666)
-})
-names(ward_stab) <- paste0("k", k.grid)
+  stab_summary <- data.frame(
+    k = k.grid,
+    mean_gamma = sapply(ward_stab, \(z) z$mean_gamma),
+    mean_gamma_mcse = sapply(ward_stab, \(z) z$mean_gamma_mcse)
+  )
+  print(stab_summary)
+}
 
-stab_summary <- data.frame(
-  k = k.grid,
-  mean_gamma = sapply(ward_stab, \(z) z$mean_gamma),
-  mean_gamma_mcse = sapply(ward_stab, \(z) z$mean_gamma_mcse)
-)
-
-ward_ch_summary
-stab_summary
+ward.summary(X.pca[, 1:13], 500)
+# k        CH
+# 1 3 157.71526
+# 2 4 128.48701
+# 3 5 112.32357
+# 4 6 103.55704
+# 5 7  94.68403
+#    k mean_gamma mean_gamma_mcse
+# k3 3  0.6076719     0.003099954
+# k4 4  0.5093733     0.002553549
+# k5 5  0.4772990     0.003997354
+# k6 6  0.4865560     0.004196353
+# k7 7  0.4591030     0.003292549

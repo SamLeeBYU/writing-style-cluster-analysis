@@ -34,6 +34,7 @@ pca <- function(X, k = NULL, center = TRUE, scale. = FALSE) {
 
 pca_elbow_plot <- function(
   X,
+  k.star = 13,
   max_k = NULL,
   center = TRUE,
   scale. = FALSE,
@@ -70,6 +71,12 @@ pca_elbow_plot <- function(
       linewidth = 0.5,
       color = "grey60"
     ) +
+    geom_vline(      
+      aes(xintercept = k.star),
+      linetype = "dashed",
+      linewidth = 0.5,
+      color = "grey60"
+    )+
     scale_color_paper(guide = "none") +
     scale_x_continuous(
       breaks = seq_len(max_k),

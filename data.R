@@ -10,11 +10,7 @@ collins <- read.table(
   check.names = FALSE
 )
 
-#For bootstrapping
-mcse <- function(x) {
-  sd(x) / sqrt(length(x))
-}
-
 X <- collins[, -c(1, 20:24)]
 
-X.pca <- pca(X)
+#PCA on the correlation matrix (this is done by scaling)
+X.pca <- pca(X, center=T, scale.=T)

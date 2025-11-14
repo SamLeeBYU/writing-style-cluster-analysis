@@ -97,28 +97,42 @@ kmeans_jaccard_boot <- function(
 }
 
 k.grid <- 3:7
-X8 <- X.pca[, 1:8]
 
-kmeans.summary <- function(){
-  kmeans_ch_summary <- kmeans_ch(X8, k.grid, Bstart = 10, seed = 666)
-  
+kmeans.summary <- function(X, iters = 500, seed = 666) {
+  kmeans_ch_summary <- kmeans_ch(X, k.grid, Bstart = 10, seed = 666)
+  print(kmeans_ch_summary)
+
   kmeans_stab <- lapply(k.grid, function(k) {
     kmeans_jaccard_boot(
-      X8,
+      X,
       k = k,
-      R = 500,
+      R = iters,
       Bstart = 10,
-      seed = 666
+      seed = seed
     )
   })
   names(kmeans_stab) <- paste0("k", k.grid)
-  
+
   kmeans_stab_summary <- data.frame(
     k = k.grid,
     mean_gamma = sapply(kmeans_stab, \(z) z$mean_gamma),
     mean_gamma_mcse = sapply(kmeans_stab, \(z) z$mean_gamma_mcse)
   )
-  
-  print(kmeans_ch_summary)
+
   print(kmeans_stab_summary)
 }
+
+kmeans.summary(X = X.pca[, 1:13], iters = 500)
+
+# k       CH
+# 1 3 187.6944
+# 2 4 151.8520
+# 3 5 134.3061
+# 4 6 124.2679
+# 5 7 115.2718
+#    k mean_gamma mean_gamma_mcse
+# k3 3  0.9059998     0.002375117
+# k4 4  0.6883734     0.005286859
+# k5 5  0.6472300     0.004920278
+# k6 6  0.6775243     0.005006445
+# k7 7  0.6394362     0.004726481

@@ -27,7 +27,7 @@ gmm_jaccard_boot <- function(X, k, R = 200, seed = NULL) {
   }
 
   n <- nrow(X)
-  cl0 <- nb_clusters(X, k)
+  cl0 <- gmm_clusters(X, k)
 
   boot_fun <- function(data, indices) {
     idx <- indices
@@ -89,20 +89,27 @@ gmm_jaccard_boot <- function(X, k, R = 200, seed = NULL) {
 }
 
 k.grid <- 3:7
-X8 <- X.pca[, 1:8]
 
-gmm_ch_summary <- gmm_ch(X8, k.grid, seed = 666)
+gmm.summary <- function(X, iters = 500, seed = 666) {
+  gmm_ch_summary <- gmm_ch(X, k.grid, seed = seed)
+  print(gmm_ch_summary)
+  gmm_stab <- lapply(k.grid, function(k) {
+    gmm_jaccard_boot(X, k = k, R = iters, seed = seed)
+  })
+  names(gmm_stab) <- paste0("k", k.grid)
 
-gmm_stab <- lapply(k.grid, function(k) {
-  nb_jaccard_boot(X8, k = k, R = 500, seed = 666)
-})
-names(gmm_stab) <- paste0("k", k.grid)
+  gmm_stab_summary <- data.frame(
+    k = k.grid,
+    mean_gamma = sapply(gmm_stab, \(z) z$mean_gamma),
+    mean_gamma_mcse = sapply(gmm_stab, \(z) z$mean_gamma_mcse)
+  )
+  print(gmm_stab_summary)
+}
 
-gmm_stab_summary <- data.frame(
-  k = k.grid,
-  mean_gamma = sapply(nb_stab, \(z) z$mean_gamma),
-  mean_gamma_mcse = sapply(nb_stab, \(z) z$mean_gamma_mcse)
-)
-
-gmm_ch_summary
-gmm_stab_summary
+gmm.summary(X = X.pca[, 1:13], 500)
+#  k       CH
+# 1 3 65.27188
+# 2 4 65.08038
+# 3 5 87.18404
+# 4 6 85.52907
+# 5 7 73.02151
