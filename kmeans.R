@@ -144,7 +144,9 @@ get.data <- function(X, k, seed) {
   ))
 }
 
-for (k in k.grid) {
-  dat.k <- get.data(X.pca[, 1:13], k, seed = 666)
-  readr::write_csv(dat.k, stringr::str_c("Data/dat-", k, ".csv"))
+create.data <- function() {
+  for (k in k.grid) {
+    dat.k <- get.data(X.pca[, 1:13], k, seed = 666)
+    readr::write_csv(dat.k, stringr::str_c("Data/dat-", k, ".csv"))
+  }
 }
