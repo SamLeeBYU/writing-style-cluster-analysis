@@ -1,9 +1,6 @@
 source("data.R")
 source("calinski.R")
 
-source("data.R")
-source("calinski.R")
-
 library(boot)
 
 kmeans_clusters <- function(X, k, Bstart = 50, seed = NULL) {
@@ -102,24 +99,26 @@ kmeans_jaccard_boot <- function(
 k.grid <- 3:7
 X8 <- X.pca[, 1:8]
 
-kmeans_ch_summary <- kmeans_ch(X8, k.grid, Bstart = 10, seed = 666)
-
-kmeans_stab <- lapply(k.grid, function(k) {
-  kmeans_jaccard_boot(
-    X8,
-    k = k,
-    R = 500,
-    Bstart = 10,
-    seed = 666
+kmeans.summary <- function(){
+  kmeans_ch_summary <- kmeans_ch(X8, k.grid, Bstart = 10, seed = 666)
+  
+  kmeans_stab <- lapply(k.grid, function(k) {
+    kmeans_jaccard_boot(
+      X8,
+      k = k,
+      R = 500,
+      Bstart = 10,
+      seed = 666
+    )
+  })
+  names(kmeans_stab) <- paste0("k", k.grid)
+  
+  kmeans_stab_summary <- data.frame(
+    k = k.grid,
+    mean_gamma = sapply(kmeans_stab, \(z) z$mean_gamma),
+    mean_gamma_mcse = sapply(kmeans_stab, \(z) z$mean_gamma_mcse)
   )
-})
-names(kmeans_stab) <- paste0("k", k.grid)
-
-kmeans_stab_summary <- data.frame(
-  k = k.grid,
-  mean_gamma = sapply(kmeans_stab, \(z) z$mean_gamma),
-  mean_gamma_mcse = sapply(kmeans_stab, \(z) z$mean_gamma_mcse)
-)
-
-kmeans_ch_summary
-kmeans_stab_summary
+  
+  print(kmeans_ch_summary)
+  print(kmeans_stab_summary)
+}

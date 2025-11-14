@@ -78,8 +78,8 @@ pca_elbow_plot <- function(
     labs(
       x = "Number of principal components",
       y = "Cumulative variance explained",
-      title = "Elbow Plot for Principal Components",
-      subtitle = "Cumulative proportion of variance explained"
+      # title = "Elbow Plot for Principal Components",
+      # subtitle = "Cumulative proportion of variance explained"
     ) +
     theme_paper(text_size = 64)
 }
