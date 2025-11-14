@@ -1,73 +1,94 @@
 source("data.R")
 source("calinski.R")
 
-unsup_nb_bernoulli <- function(
+#NOTE: DEFUNCT DO NOT USE
+
+unsup_nb_gaussian <- function(
   X,
   K,
   maxit = 200,
   tol = 1e-6,
-  laplace = 1.0,
   seed = 1
 ) {
-  # X: n x p matrix of 0/1
   set.seed(seed)
   X <- as.matrix(X)
   n <- nrow(X)
   p <- ncol(X)
-  # init via k-means on rows' sums
-  z <- matrix(runif(n * K), n, K)
-  z <- z / rowSums(z)
-  pi_k <- colMeans(z)
-  theta <- matrix(runif(K * p, 0.25, 0.75), K, p) # P(X_j=1 | k)
 
-  loglik <- function() {
-    llk <- 0
-    for (k in 1:K) {
-      llk <- llk +
-        sum(
-          z[, k] *
-            (log(pi_k[k]) +
-              rowSums(X * log(theta[k, ]) + (1 - X) * log(1 - theta[k, ])))
-        )
-    }
-    llk
+  ## --- Initialization via k-means ---
+  km <- kmeans(X, centers = K, nstart = 20)
+  labels <- km$cluster
+  pi_k <- tabulate(labels, K) / n
+  mu <- km$centers
+
+  ## Correct sigma2 initialization (K × p)
+  sigma2 <- t(sapply(1:K, function(j) {
+    apply(X[labels == j, , drop = FALSE], 2, var)
+  }))
+  sigma2 <- pmax(sigma2, 1e-6)
+
+  ## --- Correct mixture log-likelihood ---
+  loglik_fun <- function(pi_k, mu, sigma2) {
+    logphi <- sapply(1:K, function(j) {
+      X.j <- X[,]
+      -0.5 *
+        rowSums(
+          log(2 * pi * sigma2[j, ]) +
+            ((X - matrix(mu[j, ], n, p, TRUE))^2) /
+              matrix(sigma2[j, ], n, p, TRUE)
+        ) +
+        log(pi_k[j])
+    })
+    m <- apply(logphi, 1, max)
+    sum(m + log(rowSums(exp(logphi - m))))
   }
 
-  prev <- -Inf
+  prev <- loglik_fun(pi_k, mu, sigma2)
+
+  ## --- EM algorithm ---
   for (it in 1:maxit) {
-    # E-step: responsibilities r_ik
-    log_phi <- sapply(1:K, function(k) {
-      rowSums(
-        X %*%
-          diag(log(theta[k, ]), p) +
-          (1 - X) %*% diag(log(1 - theta[k, ]), p)
-      ) +
-        log(pi_k[k])
+    ## E-step: responsibilities
+    logphi <- sapply(1:K, function(j) {
+      -0.5 *
+        rowSums(
+          log(2 * pi * sigma2[j, ]) +
+            ((X - matrix(mu[j, ], n, p, TRUE))^2) /
+              matrix(sigma2[j, ], n, p, TRUE)
+        ) +
+        log(pi_k[j])
     })
-    m <- apply(log_phi, 1, max)
-    r <- exp(log_phi - m)
+
+    m <- apply(logphi, 1, max)
+    r <- exp(logphi - m)
     r <- r / rowSums(r)
 
-    # M-step
+    ## M-step
     Nk <- colSums(r) + 1e-12
-    pi_k <- as.numeric(Nk / n)
-    # Laplace smoothing
-    for (k in 1:K) {
-      num <- colSums(r[, k] * X) + laplace
-      den <- Nk[k] + 2 * laplace
-      theta[k, ] <- pmin(pmax(num / den, 1e-6), 1 - 1e-6)
+    pi_k <- Nk / n
+    mu <- (t(r) %*% X) / Nk
+
+    for (j in 1:K) {
+      diff <- X - matrix(mu[j, ], n, p, TRUE)
+      sigma2[j, ] <- colSums(r[, j] * diff^2) / Nk[j]
+      sigma2[j, ] <- pmax(sigma2[j, ], 1e-6)
     }
 
-    # convergence
-    cur <- loglik()
+    ## Evaluate new log-likelihood
+    cur <- loglik_fun(pi_k, mu, sigma2)
+
+    ## Check convergence
     if (abs(cur - prev) < tol * (1 + abs(prev))) {
+      prev <- cur
       break
     }
     prev <- cur
   }
+
+  ## Return final quantities
   list(
     prior = pi_k,
-    theta = theta,
+    mu = mu,
+    sigma2 = sigma2,
     resp = r,
     labels = max.col(r),
     loglik = prev,
@@ -76,9 +97,15 @@ unsup_nb_bernoulli <- function(
 }
 
 nb_clusters <- function(X, k) {
-  fit <- unsup_nb_bernoulli(X, K = k)
+  fit <- unsup_nb_gaussian(X, K = k)
   fit$label
 }
+
+D <- rbind(
+  MASS::mvrnorm(n = 30, mu = rep(0, 3), Sigma = diag(3)),
+  MASS::mvrnorm(n = 30, mu = rep(1, 3), Sigma = diag(3)),
+  MASS::mvrnorm(n = 30, mu = rep(2, 3), Sigma = diag(3))
+)
 
 nb_ch <- function(X, k.grid = 3:7, seed = NULL) {
   if (!is.null(seed)) {
@@ -86,7 +113,7 @@ nb_ch <- function(X, k.grid = 3:7, seed = NULL) {
   }
 
   ch_vec <- sapply(k.grid, function(k) {
-    g <- nb_clusters(X, k)
+    g <- nb_clusters(X, k) #sample(1:k, nrow(X), replace = T)
     ch.score(X, g)
   })
 
