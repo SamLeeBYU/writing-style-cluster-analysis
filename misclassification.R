@@ -1,9 +1,8 @@
 
-
-library(randomForest)
 library(randomForest)
 library(nnet)
 library(xgboost)
+library(tidyverse)
 
 supervised_cv_all <- function(datasets, label_col = "label", n_folds = 10, seed = 666) {
   set.seed(seed)
@@ -79,76 +78,69 @@ results_all
 
 
 
-
-
-
-
-
-
-
-
-
-library(ggplot2)
-
-data_k5$category <- cut(
-  data_k5$genre,
-  breaks = c(0, 3, 6, 7, 9, 15),
-  labels = c(
-    "Press",
-    "Non-press Nonfiction",
-    "Biography",
-    "Scholarship & Official Documents",
-    "Fiction"
+supervised_cv_confidence <- function(datasets, label_col = "label", n_folds = 10, seed = 666) {
+  set.seed(seed)
+  ks <- names(datasets)
+  
+  results <- data.frame(
+    k = as.numeric(gsub("k", "", ks)),
+    Random_Forest = NA,
+    Multinomial_Logistic = NA,
+    XGBoost = NA
   )
-)
+  
+  for (ki in seq_along(ks)) {
+    data <- datasets[[ki]]
+    y <- factor(data[[label_col]])
+    X <- data[, setdiff(names(data), label_col)]
+    n <- nrow(X)
+    folds <- sample(rep(1:n_folds, length.out = n))
+    
+    rf_conf <- numeric(n_folds)
+    multinom_conf <- numeric(n_folds)
+    xgb_conf <- numeric(n_folds)
+    
+    for (fold in 1:n_folds) {
+      train_idx <- which(folds != fold)
+      test_idx  <- which(folds == fold)
+      
+      X_train <- X[train_idx, ]
+      X_test  <- X[test_idx, ]
+      y_train <- y[train_idx]
+      y_test  <- y[test_idx]
+      
+      # Random Forest
+      rf_model <- randomForest(x = X_train, y = y_train, ntree = 500)
+      rf_pred_prob <- predict(rf_model, X_test, type = "prob")
+      rf_conf[fold] <- mean(apply(rf_pred_prob, 1, max))
+      
+      # Multinomial Logistic Regression
+      multinom_model <- nnet::multinom(y_train ~ ., data = X_train, trace = FALSE)
+      multinom_pred_prob <- predict(multinom_model, X_test, type = "probs")
+      multinom_conf[fold] <- mean(apply(multinom_pred_prob, 1, max))
+      
+      # XGBoost
+      y_train_num <- as.numeric(y_train) - 1
+      y_test_num <- as.numeric(y_test) - 1
+      dtrain <- xgb.DMatrix(data = as.matrix(X_train), label = y_train_num)
+      dtest  <- xgb.DMatrix(data = as.matrix(X_test), label = y_test_num)
+      params <- list(objective = "multi:softprob", num_class = length(unique(y)), eval_metric = "mlogloss")
+      xgb_model <- xgb.train(params = params, data = dtrain, nrounds = 100, verbose = 0)
+      xgb_pred_prob <- matrix(predict(xgb_model, dtest), ncol = length(unique(y)), byrow = TRUE)
+      xgb_conf[fold] <- mean(apply(xgb_pred_prob, 1, max))
+    }
+    
+    results$Random_Forest[ki] <- mean(rf_conf)
+    results$Multinomial_Logistic[ki] <- mean(multinom_conf)
+    results$XGBoost[ki] <- mean(xgb_conf)
+  }
+  
+  return(results)
+}
 
-library(dplyr)
-
-df <- data_k5 %>%
-  group_by(category, label) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(category) %>%
-  mutate(prop = n / sum(n))
+# Example usage
+results_all_conf <- supervised_cv_confidence(datasets, label_col = "label", n_folds = 5)
+results_all_conf
 
 
-library(ggplot2)
-
-category_colors <- c(
-  "Press" = "#1b9e77",
-  "Non-press Nonfiction" = "#d95f02",
-  "Biography" = "#7570b3",
-  "Scholarship & Official Documents" = "#e7298a",
-  "Fiction" = "#66a61e"
-)
-
-ggplot(df, aes(x = category, y = prop, fill = category)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  facet_wrap(~ label, nrow = 1) +
-  scale_fill_manual(values = category_colors) +
-  theme_minimal() +
-  labs(
-    x = "Genre Category",
-    y = "Proportion",
-    fill = "Category",
-    title = "Proportion of Genre Categories within Each Cluster"
-  ) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    strip.text = element_text(size = 12)
-  )
-
-
-
-
-library(ggplot2)
-
-tbl <- table(data_k5$genre, data_k5$label)
-df_heat <- as.data.frame(tbl)
-colnames(df_heat) <- c("genre", "cluster", "count")
-
-ggplot(df_heat, aes(x = cluster, y = genre, fill = count)) +
-  geom_tile() +
-  scale_fill_gradient(low = "white", high = "red") +
-  theme_minimal() +
-  labs(x = "Cluster", y = "Genre", fill = "Count")
 
