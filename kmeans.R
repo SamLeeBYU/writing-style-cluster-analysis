@@ -112,6 +112,7 @@ kmeans.summary <- function(X, iters = 500, seed = 666) {
     )
   })
   names(kmeans_stab) <- paste0("k", k.grid)
+  print(kmeans_stab)
 
   kmeans_stab_summary <- data.frame(
     k = k.grid,
@@ -122,7 +123,7 @@ kmeans.summary <- function(X, iters = 500, seed = 666) {
   print(kmeans_stab_summary)
 }
 
-#kmeans.summary(X = X.pca[, 1:13], iters = 500)
+kmeans.summary(X = X.pca[, 1:13], iters = 500)
 
 # k       CH
 # 1 3 187.6944

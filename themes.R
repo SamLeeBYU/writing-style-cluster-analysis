@@ -36,7 +36,7 @@ theme_paper <- function(base_size = 14, text_size = 14, base_family = "cm") {
       panel.grid.major.x = element_blank(),
       panel.grid.minor.x = element_blank(),
       panel.grid.minor.y = element_blank(),
-      panel.grid.major.y = element_line(linewidth = 0.3, color = "grey85"),
+      #panel.grid.major.y = element_line(linewidth = 0.3, color = "grey85"),
       panel.border = element_rect(fill = NA, color = "grey60", linewidth = 0.4),
 
       # Legend
@@ -69,4 +69,20 @@ scale_color_paper <- function(...) {
 
 scale_fill_paper <- function(...) {
   scale_fill_manual(values = paper_palette, ...)
+}
+
+scale_fill_gradient2_paper <- function(
+  low = "#7570b3",
+  mid = "white",
+  high = "#d95f02",
+  midpoint = 0,
+  ...
+) {
+  scale_fill_gradient2(
+    low = low,
+    mid = mid,
+    high = high,
+    midpoint = midpoint,
+    ...
+  )
 }
