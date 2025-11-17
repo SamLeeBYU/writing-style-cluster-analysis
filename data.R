@@ -13,4 +13,4 @@ collins <- read.table(
 X <- collins[, -c(1, 20:24)]
 
 #PCA on the correlation matrix (this is done by scaling)
-X.pca <- pca(X, center=T, scale.=T)
+X.pca <- pca(X, center = T, scale. = T)
